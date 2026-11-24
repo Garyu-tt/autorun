@@ -98,7 +98,12 @@ static Result svcCreateCodeMemory(Handle *handle, void *source, size_t size)
 static Result svcControlCodeMemory(Handle handle, int operation,
                                    void *address, size_t size, int permission)
 {
-    assert(virtmem_depth == 1 && handle == created_handle && address && size == 0x1000);
+    assert(handle == created_handle && address && size == 0x1000);
+    if (operation == CodeMapOperation_MapOwner || operation == CodeMapOperation_MapSlave)
+        assert(virtmem_depth == 1);
+    else
+        assert(operation == CodeMapOperation_UnmapOwner ||
+               operation == CodeMapOperation_UnmapSlave);
     assert(operation_count < 8);
     operations[operation_count++] = operation;
     if (operation == CodeMapOperation_MapOwner) {
