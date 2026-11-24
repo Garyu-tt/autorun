@@ -19598,19 +19598,35 @@ int wine_nx_code_memory_map( void *source, size_t size, struct wine_nx_code_memo
     virtmemLock();
     if ((out->rw = find_code_run_locked( size )))
     {
-        if (R_FAILED( (res = svcControlCodeMemory( handle, CodeMapOperation_MapOwner,
-                                                  out->rw, size, Perm_Rw )) ))
+        /* Reserve the address before mapping it. virtmemAddReservation can
+         * fail under memory pressure; never leave a live alias untracked. */
+        if (!(out->rw_token = virtmemAddReservation( out->rw, size )))
+        {
             out->rw = NULL;
-        else
-            out->rw_token = virtmemAddReservation( out->rw, size );
+            res = MAKERESULT( Module_Libnx, LibnxError_OutOfMemory );
+        }
+        else if (R_FAILED( (res = svcControlCodeMemory( handle, CodeMapOperation_MapOwner,
+                                                       out->rw, size, Perm_Rw )) ))
+        {
+            virtmemRemoveReservation( out->rw_token );
+            out->rw_token = NULL;
+            out->rw = NULL;
+        }
     }
     if (out->rw && (out->rx = find_code_run_locked( size )))
     {
-        if (R_FAILED( (res = svcControlCodeMemory( handle, CodeMapOperation_MapSlave,
-                                                  out->rx, size, Perm_Rx )) ))
+        if (!(out->rx_token = virtmemAddReservation( out->rx, size )))
+        {
             out->rx = NULL;
-        else
-            out->rx_token = virtmemAddReservation( out->rx, size );
+            res = MAKERESULT( Module_Libnx, LibnxError_OutOfMemory );
+        }
+        else if (R_FAILED( (res = svcControlCodeMemory( handle, CodeMapOperation_MapSlave,
+                                                       out->rx, size, Perm_Rx )) ))
+        {
+            virtmemRemoveReservation( out->rx_token );
+            out->rx_token = NULL;
+            out->rx = NULL;
+        }
     }
     virtmemUnlock();
     pthread_mutex_unlock( &mapping_mutex );
