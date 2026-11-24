@@ -6348,11 +6348,15 @@ static HRESULT ddraw_surface_reserve_memory(struct wined3d_texture *wined3d_text
     return hr;
 }
 
-static bool is_render_target(struct ddraw *ddraw, DWORD caps, unsigned int surface_version)
+static bool is_render_target(struct ddraw *ddraw, const DDSURFACEDESC2 *desc, unsigned int surface_version)
 {
+    DWORD caps = desc->ddsCaps.dwCaps;
+
     if (caps & DDSCAPS_3DDEVICE)
         return true;
-    return surface_version == 1 && caps & DDSCAPS_PRIMARYSURFACE && !(ddraw->flags & DDRAW_NO3D);
+    if (surface_version != 1 || !(caps & DDSCAPS_PRIMARYSURFACE) || (ddraw->flags & DDRAW_NO3D))
+        return false;
+    return !format_is_paletteindexed(&desc->ddpfPixelFormat);
 }
 
 static void wined3d_resource_desc_from_ddraw(struct ddraw *ddraw,
@@ -6378,7 +6382,7 @@ static void wined3d_resource_desc_from_ddraw(struct ddraw *ddraw,
     wined3d_desc->bind_flags |= WINED3D_BIND_SHADER_RESOURCE;
     if (caps & DDSCAPS_ZBUFFER)
         wined3d_desc->bind_flags |= WINED3D_BIND_DEPTH_STENCIL;
-    else if (is_render_target(ddraw, caps, version))
+    else if (is_render_target(ddraw, desc, version))
         wined3d_desc->bind_flags |= WINED3D_BIND_RENDER_TARGET;
 
     if ((caps & DDSCAPS_SYSTEMMEMORY) && !(caps2 & (DDSCAPS2_TEXTUREMANAGE | DDSCAPS2_D3DTEXTUREMANAGE)))
@@ -6396,7 +6400,7 @@ static void wined3d_resource_desc_from_ddraw(struct ddraw *ddraw,
         else if (caps & DDSCAPS_VIDEOMEMORY)
         {
             /* Dynamic resources can't be written by the GPU. */
-            if (!(caps & DDSCAPS_ZBUFFER) && !is_render_target(ddraw, caps, version))
+            if (!(caps & DDSCAPS_ZBUFFER) && !is_render_target(ddraw, desc, version))
                 wined3d_desc->usage |= WINED3DUSAGE_DYNAMIC;
         }
     }
@@ -7004,7 +7008,7 @@ HRESULT ddraw_surface_create(struct ddraw *ddraw, const DDSURFACEDESC2 *surface_
 
             if (desc->ddsCaps.dwCaps & DDSCAPS_ZBUFFER)
                 bind_flags |= WINED3D_BIND_DEPTH_STENCIL;
-            else if (is_render_target(ddraw, desc->ddsCaps.dwCaps, version))
+            else if (is_render_target(ddraw, desc, version))
                 bind_flags |= WINED3D_BIND_RENDER_TARGET;
 
             if (!(ddraw->flags & DDRAW_NO3D) && SUCCEEDED(hr = wined3d_check_device_format(ddraw->wined3d,
