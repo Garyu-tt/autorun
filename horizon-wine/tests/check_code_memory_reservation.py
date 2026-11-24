@@ -44,7 +44,8 @@ enum { Perm_Rw = 3, Perm_Rx = 5 };
 
 static pthread_mutex_t mapping_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int virtmem_depth, reservation_calls, remove_calls, fail_reservation_at;
-static int run_calls, missing_run_at, create_rc, owner_rc, slave_rc, close_calls;
+static int run_calls, missing_run_at, close_calls;
+static Result create_rc, owner_rc, slave_rc;
 static int operations[8], operation_count;
 static Handle created_handle = 0x77;
 
