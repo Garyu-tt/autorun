@@ -1,0 +1,26 @@
+name: Horizon code-memory host regression
+
+on:
+  pull_request:
+    paths:
+      - "dlls/ntdll/unix/horizon.c"
+      - "horizon-wine/tests/check_code_memory_reservation.py"
+      - ".github/workflows/horizon-code-memory.yml"
+  push:
+    branches: [main]
+    paths:
+      - "dlls/ntdll/unix/horizon.c"
+      - "horizon-wine/tests/check_code_memory_reservation.py"
+      - ".github/workflows/horizon-code-memory.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  code-memory-reservation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run extracted Horizon mapper regression
+        run: python3 horizon-wine/tests/check_code_memory_reservation.py
